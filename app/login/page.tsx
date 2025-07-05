@@ -119,15 +119,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-medium text-blue-800 mb-2">默认账户信息</h3>
-            <div className="text-sm text-blue-600 space-y-1">
-              <div><strong>管理员：</strong>13800138001 / 123456</div>
-              <div><strong>张老师：</strong>13800138002 / 123456</div>
-              <div><strong>李老师：</strong>13800138003 / 123456</div>
-              <div><strong>王老师：</strong>13800138004 / 123456</div>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
