@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 import "./globals.css"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/lib/contexts/AuthContext"
+import { AuthProvider } from "@/contexts/auth-context"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -11,17 +12,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Hare - AI Beauty Analysis",
-  description: "Discover your perfect beauty routine with AI-powered facial analysis and personalized product recommendations.",
-  generator: 'v0.dev'
-}
-
-// 初始化调度器（仅在服务器端）
-if (typeof window === 'undefined') {
-  // 导入初始化服务，它会自动处理调度器启动
-  import('@/lib/services/init-scheduler').catch(error => {
-    console.error('Failed to load scheduler initialization:', error)
-  })
+  title: "排课系统",
+  description: "专为教师设计的智能排课管理系统，支持学生管理、课程安排和课表生成",
 }
 
 export default function RootLayout({
@@ -35,6 +27,7 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
             {children}
+            <Toaster />
           </ThemeProvider>
         </AuthProvider>
       </body>

@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 学生表
+model Student {
+  id          String   @id @default(cuid())
+  name        String   // 姓名
+  phone       String   // 联系手机号
+  grade       String   // 年级
+  classroom   String   // 教室
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关系：一个学生可以有多个排课
+  schedules   Schedule[]
+
+  // 唯一约束：姓名+手机号组合唯一
+  @@unique([name, phone])
+  @@map("students")
+}
+
+// 教师表（同时作为用户表）
+model Teacher {
+  id          String   @id @default(cuid())
+  name        String   // 姓名
+  phone       String   @unique // 联系手机号（用于登录）
+  email       String?  // 邮箱
+  subject     String?  // 主要科目
+
+  // 登录相关字段
+  password    String   // 密码（加密存储）
+  role        String   @default("TEACHER") // 角色：ADMIN 或 TEACHER
+  isActive    Boolean  @default(true) // 是否激活
+  lastLoginAt DateTime? @map("last_login_at") // 最后登录时间
+
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关系：一个教师可以有多个排课
+  schedules   Schedule[]
+
+  @@map("teachers")
+}
+
+// 科目表
+model Subject {
+  id          String   @id @default(cuid())
+  name        String   @unique // 科目名称
+  description String?  // 科目描述
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关系：一个科目可以有多个排课
+  schedules   Schedule[]
+
+  @@map("subjects")
+}
+
+// 教室表
+model Classroom {
+  id          String   @id @default(cuid())
+  name        String   @unique // 教室名称
+  capacity    Int?     // 容量
+  location    String?  // 位置
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关系：一个教室可以有多个排课
+  schedules   Schedule[]
+
+  @@map("classrooms")
+}
+
+// 排课表
+model Schedule {
+  id          String   @id @default(cuid())
+
+  // 外键关系
+  studentId   String   @map("student_id")
+  teacherId   String   @map("teacher_id")
+  subjectId   String   @map("subject_id")
+  classroomId String   @map("classroom_id")
+
+  // 时间信息
+  dayOfWeek   Int      // 星期几 (1-7, 1=周一, 7=周日)
+  startTime   String   // 开始时间 (格式: "09:00")
+  endTime     String   // 结束时间 (格式: "10:00")
+
+  // 其他信息
+  notes       String?  // 备注
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关系定义
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher     Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  // 复合索引：用于快速查询冲突
+  @@index([studentId, dayOfWeek, startTime, endTime])
+  @@index([teacherId, dayOfWeek, startTime, endTime])
+  @@index([classroomId, dayOfWeek, startTime, endTime])
+  @@map("schedules")
+}
+
+// 操作日志表
+model OperationLog {
+  id          String   @id @default(cuid())
+
+  // 操作信息
+  operation   String   // 操作类型：CREATE, UPDATE, DELETE
+  tableName   String   @map("table_name") // 操作的表名
+  recordId    String   @map("record_id")  // 操作的记录ID
+
+  // 操作者信息（这里简化为操作者名称，实际项目中可能关联用户表）
+  operatorName String  @map("operator_name") // 操作者姓名
+  operatorType String  @map("operator_type") // 操作者类型：TEACHER, ADMIN
+
+  // 操作详情
+  oldData     Json?    @map("old_data")    // 操作前的数据（JSON格式）
+  newData     Json?    @map("new_data")    // 操作后的数据（JSON格式）
+  description String?  // 操作描述
+
+  // 时间戳
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // 索引
+  @@index([tableName, recordId])
+  @@index([operatorName])
+  @@index([createdAt])
+  @@map("operation_logs")
+}
