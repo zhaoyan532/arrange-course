@@ -48,6 +48,9 @@ export default function ClassroomsPage() {
   const [totalCount, setTotalCount] = useState(0)
   const pageSize = 10
 
+  // 创建加载状态
+  const [isCreating, setIsCreating] = useState(false)
+
   // 获取教室列表
   const fetchClassrooms = async () => {
     try {
@@ -86,7 +89,10 @@ export default function ClassroomsPage() {
 
   // 创建教室
   const handleCreate = async () => {
+    if (isCreating) return // 防止重复提交
+
     try {
+      setIsCreating(true)
       const response = await fetch('/api/classrooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,9 +101,9 @@ export default function ClassroomsPage() {
           capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
         }),
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         toast.success('教室创建成功')
         setIsCreateDialogOpen(false)
@@ -108,6 +114,8 @@ export default function ClassroomsPage() {
       }
     } catch (error) {
       toast.error('创建教室失败')
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -220,8 +228,12 @@ export default function ClassroomsPage() {
                   placeholder="请输入教室位置"
                 />
               </div>
-              <Button onClick={handleCreate} className="w-full bg-blue-600 hover:bg-blue-700">
-                创建教室
+              <Button
+                onClick={handleCreate}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={isCreating}
+              >
+                {isCreating ? '创建中...' : '创建教室'}
               </Button>
             </div>
           </DialogContent>

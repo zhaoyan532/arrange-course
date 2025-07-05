@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
 import { Badge } from "@/components/ui/badge"
 import { BookOpen, Download, FileText, Image } from "lucide-react"
 import { toast } from "sonner"
@@ -47,27 +47,66 @@ export default function StudentTimetablePage() {
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [timetableData, setTimetableData] = useState<TimetableData | null>(null)
   const [loading, setLoading] = useState(false)
-  const [selectedWeek, setSelectedWeek] = useState(1) // 当前选择的周次
+  // 获取当前周次
+  const getCurrentWeek = () => {
+    const today = new Date()
+    const currentYear = today.getFullYear()
+    const yearStart = new Date(`${currentYear}-01-01`) // 1月1日
+
+    // 找到今年第一个周一
+    const firstDayOfWeek = yearStart.getDay()
+    // 修正计算：如果1月1日是周日(0)，第一个周一是1月2日(+1天)
+    // 如果1月1日是周一(1)，第一个周一就是1月1日(+0天)
+    // 如果1月1日是周二(2)，第一个周一是1月7日(+6天)
+    // 如果1月1日是周三(3)，第一个周一是1月6日(+5天)
+    // 如果1月1日是周四(4)，第一个周一是1月5日(+4天)
+    // 如果1月1日是周五(5)，第一个周一是1月4日(+3天)
+    // 如果1月1日是周六(6)，第一个周一是1月3日(+2天)
+    const daysToFirstMonday = firstDayOfWeek === 0 ? 1 :
+                              firstDayOfWeek === 1 ? 0 :
+                              8 - firstDayOfWeek
+    const firstMonday = new Date(yearStart)
+    firstMonday.setDate(yearStart.getDate() + daysToFirstMonday)
+
+    // 计算当前日期到第一个周一的天数差
+    const diffTime = today.getTime() - firstMonday.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+    // 如果是周日，需要特殊处理
+    const todayDayOfWeek = today.getDay()
+    let currentWeek
+
+    if (todayDayOfWeek === 0) {
+      // 周日：属于当前周，不是下一周
+      currentWeek = Math.floor(diffDays / 7) + 1
+    } else {
+      // 周一到周六：正常计算
+      currentWeek = Math.floor(diffDays / 7) + 1
+    }
+
+    return Math.max(1, Math.min(52, currentWeek))
+  }
+
+  const [selectedWeek, setSelectedWeek] = useState(getCurrentWeek()) // 默认当前周次
 
   // 获取指定周次的日期范围
   const getWeekDates = (weekNumber: number) => {
-    const currentDate = new Date()
-    const currentYear = currentDate.getFullYear()
+    const currentYear = new Date().getFullYear()
+    const yearStart = new Date(`${currentYear}-01-01`) // 1月1日
 
-    // 假设学期从9月1日开始
-    const semesterStart = new Date(currentYear, 8, 1) // 9月1日
-
-    // 找到学期开始的周一
-    const startDayOfWeek = semesterStart.getDay()
-    const daysToMonday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1
-    const firstMonday = new Date(semesterStart)
-    firstMonday.setDate(semesterStart.getDate() - daysToMonday)
+    // 找到今年第一个周一
+    const firstDayOfWeek = yearStart.getDay()
+    const daysToFirstMonday = firstDayOfWeek === 0 ? 1 :
+                              firstDayOfWeek === 1 ? 0 :
+                              8 - firstDayOfWeek
+    const firstMonday = new Date(yearStart)
+    firstMonday.setDate(yearStart.getDate() + daysToFirstMonday)
 
     // 计算指定周次的周一
     const weekStart = new Date(firstMonday)
     weekStart.setDate(firstMonday.getDate() + (weekNumber - 1) * 7)
 
-    // 生成一周的日期
+    // 生成一周的日期（周一到周日）
     const weekDates = []
     for (let i = 0; i < 7; i++) {
       const date = new Date(weekStart)
@@ -103,9 +142,13 @@ export default function StudentTimetablePage() {
   const fetchTimetable = async (studentId: string) => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/students/${studentId}/timetable`)
+      const weekDates = getWeekDates(selectedWeek)
+      const startDate = weekDates[0].toISOString().split('T')[0]
+      const endDate = weekDates[6].toISOString().split('T')[0]
+
+      const response = await fetch(`/api/students/${studentId}/timetable?startDate=${startDate}&endDate=${endDate}`)
       const data = await response.json()
-      
+
       if (response.ok) {
         setTimetableData(data)
       } else {
@@ -130,7 +173,7 @@ export default function StudentTimetablePage() {
     } else {
       setTimetableData(null)
     }
-  }, [selectedStudentId])
+  }, [selectedStudentId, selectedWeek])
 
   // 导出为 Excel
   const exportToExcel = () => {
@@ -156,25 +199,62 @@ export default function StudentTimetablePage() {
     }
   }
 
-  // 获取时间段内的课程
-  const getClassesForTimeSlot = (day: TimetableDay, timeSlot: string) => {
-    return day.classes.filter(cls => {
-      const startHour = parseInt(cls.startTime.split(':')[0])
-      const slotHour = parseInt(timeSlot.split(':')[0])
-      const endHour = parseInt(cls.endTime.split(':')[0])
-      
-      return startHour <= slotHour && slotHour < endHour
-    })
+
+
+  // 计算课程在时间轴上的位置和高度
+  const calculateClassPosition = (cls: any) => {
+    const parseTime = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      return hours * 60 + minutes
+    }
+
+    const startMinutes = parseTime(cls.startTime)
+    const endMinutes = parseTime(cls.endTime)
+    const duration = endMinutes - startMinutes
+
+    // 时间轴每行高度是80px（h-20），每15分钟一行
+    const rowHeight = 80 // px，对应 h-20
+    const minutesPerRow = 15
+
+    // 计算课程高度：根据时长计算需要多少行
+    const rowsNeeded = duration / minutesPerRow
+    const height = Math.max(rowsNeeded * rowHeight, 60) // 最小高度60px
+
+    // 计算课程位置：找到课程开始时间在时间轴中的位置
+    const startTimeIndex = timeSlots.findIndex(slot => slot === cls.startTime)
+    const top = startTimeIndex >= 0 ? startTimeIndex * rowHeight : 0
+
+    return { top, height }
   }
 
 
   const weekDates = getWeekDates(selectedWeek)
 
-  const timeSlots = [
-    '08:00', '09:00', '10:00', '11:00', '12:00',
-    '13:00', '14:00', '15:00', '16:00', '17:00',
-    '18:00', '19:00', '20:00'
-  ]
+  // 生成动态时间段 - 根据实际课程时间生成
+  const generateTimeSlots = () => {
+    const slots = new Set<string>()
+
+    // 添加常用时间段
+    for (let hour = 8; hour <= 21; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        slots.add(timeString)
+      }
+    }
+
+    // 添加实际课程的开始时间
+    if (timetableData) {
+      timetableData.timetable.forEach(day => {
+        day.classes.forEach(cls => {
+          slots.add(cls.startTime)
+        })
+      })
+    }
+
+    return Array.from(slots).sort()
+  }
+
+  const timeSlots = generateTimeSlots()
 
   return (
     <AuthGuard>
@@ -222,7 +302,7 @@ export default function StudentTimetablePage() {
                   <SelectValue placeholder="请选择周次" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: 20 }, (_, i) => i + 1).map((week) => (
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map((week) => (
                     <SelectItem key={week} value={week.toString()}>
                       第 {week} 周
                     </SelectItem>
@@ -264,65 +344,72 @@ export default function StudentTimetablePage() {
           </CardHeader>
           <CardContent>
             <div id="student-timetable" className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-20">时间</TableHead>
-                    {timetableData.timetable.map((day, index) => (
-                      <TableHead key={day.day} className="text-center min-w-32">
-                        <div className="text-blue-700">{day.dayLabel}</div>
-                        <div className="text-xs text-blue-500 font-normal">
-                          {weekDates[index]?.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
-                        </div>
-                      </TableHead>
+              {/* 时间轴样式课表 */}
+              <div className="border rounded-lg bg-white">
+                {/* 表头 */}
+                <div className="grid grid-cols-8 border-b bg-gray-50">
+                  <div className="p-3 font-medium border-r">时间</div>
+                  {timetableData.timetable.map((day, index) => (
+                    <div key={day.day} className="p-3 text-center border-r last:border-r-0">
+                      <div className="text-blue-700 font-medium">{day.dayLabel}</div>
+                      <div className="text-xs text-blue-500">
+                        {weekDates[index]?.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 时间轴内容区域 */}
+                <div className="grid grid-cols-8">
+                  {/* 时间轴列 */}
+                  <div className="border-r bg-gray-50">
+                    {timeSlots.map((timeSlot) => (
+                      <div
+                        key={timeSlot}
+                        className="h-20 flex items-start px-3 py-2 text-sm font-medium border-b last:border-b-0"
+                      >
+                        {timeSlot}
+                      </div>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {timeSlots.map((timeSlot) => (
-                    <TableRow key={timeSlot}>
-                      <TableCell className="font-medium">{timeSlot}</TableCell>
-                      {timetableData.timetable.map((day) => {
-                        const classes = getClassesForTimeSlot(day, timeSlot)
+                  </div>
+
+                  {/* 每一天的课程列 */}
+                  {timetableData.timetable.map((day) => (
+                    <div key={day.day} className="relative border-r last:border-r-0">
+                      {/* 时间格子背景 */}
+                      {timeSlots.map((timeSlot) => (
+                        <div
+                          key={timeSlot}
+                          className="h-20 border-b last:border-b-0 border-gray-100"
+                        />
+                      ))}
+
+                      {/* 课程块 - 绝对定位 */}
+                      {day.classes.map((cls: any) => {
+                        const position = calculateClassPosition(cls)
                         return (
-                          <TableCell key={day.day} className="p-2">
-                            {classes.length > 0 ? (
-                              <div className="space-y-1">
-                                {classes.map((cls) => (
-                                  <div
-                                    key={cls.id}
-                                    className="bg-blue-50 border border-blue-200 rounded p-2 text-xs"
-                                  >
-                                    <div className="font-medium text-blue-800">
-                                      {cls.subject}
-                                    </div>
-                                    <div className="text-blue-600">
-                                      {cls.teacher}
-                                    </div>
-                                    <div className="text-blue-500">
-                                      {cls.classroom}
-                                    </div>
-                                    <div className="text-blue-400">
-                                      {cls.startTime}-{cls.endTime}
-                                    </div>
-                                    {cls.notes && (
-                                      <div className="text-blue-400 mt-1">
-                                        {cls.notes}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-gray-300 text-center">-</div>
+                          <div
+                            key={cls.id}
+                            className="absolute left-1 right-1 bg-blue-50 border border-blue-200 rounded p-2 text-xs shadow-sm z-10"
+                            style={{
+                              top: `${position.top}px`,
+                              height: `${position.height}px`,
+                            }}
+                          >
+                            <div className="font-medium text-blue-800 truncate">{cls.subject}</div>
+                            <div className="text-blue-600 truncate">{cls.teacher}</div>
+                            <div className="text-blue-500 truncate">{cls.classroom}</div>
+                            <div className="text-blue-400 text-xs mt-1">{cls.startTime}-{cls.endTime}</div>
+                            {cls.notes && (
+                              <div className="text-blue-400 text-xs truncate">{cls.notes}</div>
                             )}
-                          </TableCell>
+                          </div>
                         )
                       })}
-                    </TableRow>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </div>
             </div>
 
             {/* 课程列表 */}

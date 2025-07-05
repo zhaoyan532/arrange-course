@@ -14,6 +14,7 @@ import { toast } from "sonner"
 import { Navigation } from "@/components/navigation"
 import { AuthGuard } from "@/components/auth-guard"
 import { DataPagination } from "@/components/data-pagination"
+import { TimeSelect } from "@/components/ui/time-select"
 
 interface Student {
   id: string
@@ -39,7 +40,7 @@ interface Classroom {
 
 interface Schedule {
   id: string
-  dayOfWeek: number
+  scheduleDate: string
   startTime: string
   endTime: string
   notes?: string
@@ -54,21 +55,11 @@ interface ScheduleFormData {
   teacherId: string
   subjectId: string
   classroomId: string
-  dayOfWeek: string
+  scheduleDate: string
   startTime: string
   endTime: string
   notes: string
 }
-
-const DAYS_OF_WEEK = [
-  { value: '1', label: '周一' },
-  { value: '2', label: '周二' },
-  { value: '3', label: '周三' },
-  { value: '4', label: '周四' },
-  { value: '5', label: '周五' },
-  { value: '6', label: '周六' },
-  { value: '7', label: '周日' },
-]
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([])
@@ -83,7 +74,7 @@ export default function SchedulesPage() {
     teacherId: '',
     subjectId: '',
     classroomId: '',
-    dayOfWeek: '',
+    scheduleDate: '',
     startTime: '',
     endTime: '',
     notes: '',
@@ -94,6 +85,9 @@ export default function SchedulesPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const pageSize = 10
+
+  // 创建加载状态
+  const [isCreating, setIsCreating] = useState(false)
 
   // 获取所有数据
   const fetchData = async () => {
@@ -143,18 +137,31 @@ export default function SchedulesPage() {
 
   // 创建排课
   const handleCreate = async () => {
+    if (isCreating) return // 防止重复提交
+
+    // 验证表单数据
+    if (!formData.studentId || !formData.teacherId || !formData.subjectId ||
+        !formData.classroomId || !formData.scheduleDate || !formData.startTime || !formData.endTime) {
+      toast.error('请填写所有必填字段')
+      return
+    }
+
+    // 验证时间
+    if (formData.startTime >= formData.endTime) {
+      toast.error('结束时间必须晚于开始时间')
+      return
+    }
+
     try {
+      setIsCreating(true)
       const response = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          dayOfWeek: parseInt(formData.dayOfWeek),
-        }),
+        body: JSON.stringify(formData),
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         toast.success('排课创建成功')
         setIsCreateDialogOpen(false)
@@ -163,7 +170,7 @@ export default function SchedulesPage() {
           teacherId: '',
           subjectId: '',
           classroomId: '',
-          dayOfWeek: '',
+          scheduleDate: '',
           startTime: '',
           endTime: '',
           notes: '',
@@ -174,13 +181,20 @@ export default function SchedulesPage() {
       }
     } catch (error) {
       toast.error('创建排课失败')
+    } finally {
+      setIsCreating(false)
     }
   }
 
-  // 获取星期几的显示文本
-  const getDayOfWeekText = (dayOfWeek: number) => {
-    const day = DAYS_OF_WEEK.find(d => d.value === dayOfWeek.toString())
-    return day ? day.label : `星期${dayOfWeek}`
+  // 格式化日期显示
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      weekday: 'short'
+    })
   }
 
   return (
@@ -266,38 +280,31 @@ export default function SchedulesPage() {
               </div>
 
               <div>
-                <Label htmlFor="dayOfWeek">星期 *</Label>
-                <Select value={formData.dayOfWeek} onValueChange={(value) => setFormData({ ...formData, dayOfWeek: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择星期" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS_OF_WEEK.map((day) => (
-                      <SelectItem key={day.value} value={day.value}>
-                        {day.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="scheduleDate">上课日期 *</Label>
+                <Input
+                  id="scheduleDate"
+                  type="date"
+                  value={formData.scheduleDate}
+                  onChange={(e) => setFormData({ ...formData, scheduleDate: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]} // 不能选择过去的日期
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="startTime">开始时间 *</Label>
-                  <Input
-                    id="startTime"
-                    type="time"
+                  <TimeSelect
                     value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, startTime: value })}
+                    placeholder="选择开始时间"
                   />
                 </div>
                 <div>
                   <Label htmlFor="endTime">结束时间 *</Label>
-                  <Input
-                    id="endTime"
-                    type="time"
+                  <TimeSelect
                     value={formData.endTime}
-                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, endTime: value })}
+                    placeholder="选择结束时间"
                   />
                 </div>
               </div>
@@ -312,8 +319,12 @@ export default function SchedulesPage() {
                 />
               </div>
 
-              <Button onClick={handleCreate} className="w-full">
-                创建排课
+              <Button
+                onClick={handleCreate}
+                className="w-full"
+                disabled={isCreating}
+              >
+                {isCreating ? '创建中...' : '创建排课'}
               </Button>
             </div>
           </DialogContent>
@@ -362,7 +373,7 @@ export default function SchedulesPage() {
                     <TableCell>
                       <div className="flex items-center space-x-1">
                         <Calendar className="w-4 h-4" />
-                        <span>{getDayOfWeekText(schedule.dayOfWeek)}</span>
+                        <span>{formatDate(schedule.scheduleDate)}</span>
                       </div>
                       <div className="flex items-center space-x-1 text-sm text-gray-500">
                         <Clock className="w-3 h-3" />

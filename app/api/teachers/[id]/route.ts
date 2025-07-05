@@ -29,7 +29,7 @@ export async function GET(
             classroom: true,
           },
           orderBy: [
-            { dayOfWeek: 'asc' },
+            { scheduleDate: 'asc' },
             { startTime: 'asc' },
           ],
         },

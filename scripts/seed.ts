@@ -194,7 +194,7 @@ async function main() {
         teacherId: teachers[0].id,
         subjectId: subjects[0].id,
         classroomId: classrooms[0].id,
-        dayOfWeek: 1, // 周一
+        scheduleDate: new Date('2024-12-02'), // 周一
         startTime: '09:00',
         endTime: '10:00',
         notes: '数学基础课',
@@ -206,7 +206,7 @@ async function main() {
         teacherId: teachers[1].id,
         subjectId: subjects[1].id,
         classroomId: classrooms[0].id,
-        dayOfWeek: 1, // 周一
+        scheduleDate: new Date('2024-12-02'), // 周一
         startTime: '10:00',
         endTime: '11:00',
         notes: '语文阅读课',
@@ -219,7 +219,7 @@ async function main() {
         teacherId: teachers[0].id,
         subjectId: subjects[0].id,
         classroomId: classrooms[1].id,
-        dayOfWeek: 2, // 周二
+        scheduleDate: new Date('2024-12-03'), // 周二
         startTime: '09:00',
         endTime: '10:00',
         notes: '数学进阶课',
@@ -232,7 +232,7 @@ async function main() {
         teacherId: teachers[2].id,
         subjectId: subjects[2].id,
         classroomId: classrooms[2].id,
-        dayOfWeek: 3, // 周三
+        scheduleDate: new Date('2024-12-04'), // 周三
         startTime: '14:00',
         endTime: '15:00',
         notes: '英语口语课',

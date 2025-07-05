@@ -26,7 +26,7 @@ export async function GET(
             subject: true,
           },
           orderBy: [
-            { dayOfWeek: 'asc' },
+            { scheduleDate: 'asc' },
             { startTime: 'asc' },
           ],
         },

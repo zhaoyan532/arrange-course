@@ -94,9 +94,9 @@ model Schedule {
   classroomId String   @map("classroom_id")
 
   // 时间信息
-  dayOfWeek   Int      // 星期几 (1-7, 1=周一, 7=周日)
-  startTime   String   // 开始时间 (格式: "09:00")
-  endTime     String   // 结束时间 (格式: "10:00")
+  scheduleDate DateTime @map("schedule_date") // 具体的上课日期
+  startTime    String   // 开始时间 (格式: "09:00")
+  endTime      String   // 结束时间 (格式: "10:00")
 
   // 其他信息
   notes       String?  // 备注
@@ -110,9 +110,9 @@ model Schedule {
   classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
 
   // 复合索引：用于快速查询冲突
-  @@index([studentId, dayOfWeek, startTime, endTime])
-  @@index([teacherId, dayOfWeek, startTime, endTime])
-  @@index([classroomId, dayOfWeek, startTime, endTime])
+  @@index([studentId, scheduleDate, startTime, endTime])
+  @@index([teacherId, scheduleDate, startTime, endTime])
+  @@index([classroomId, scheduleDate, startTime, endTime])
   @@map("schedules")
 }
 

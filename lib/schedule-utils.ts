@@ -21,7 +21,7 @@ export async function checkScheduleConflicts(
   studentId: string,
   teacherId: string,
   classroomId: string,
-  dayOfWeek: number,
+  scheduleDate: Date,
   startTime: string,
   endTime: string,
   excludeId?: string
@@ -32,7 +32,10 @@ export async function checkScheduleConflicts(
   const studentConflicts = await prisma.schedule.findMany({
     where: {
       studentId,
-      dayOfWeek,
+      scheduleDate: {
+        gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+        lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1),
+      },
       ...(excludeId && { id: { not: excludeId } }),
     },
     include: { subject: true, teacher: true },
@@ -51,7 +54,10 @@ export async function checkScheduleConflicts(
   const teacherConflicts = await prisma.schedule.findMany({
     where: {
       teacherId,
-      dayOfWeek,
+      scheduleDate: {
+        gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+        lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1),
+      },
       ...(excludeId && { id: { not: excludeId } }),
     },
     include: { student: true, subject: true },
@@ -70,7 +76,10 @@ export async function checkScheduleConflicts(
   const classroomConflicts = await prisma.schedule.findMany({
     where: {
       classroomId,
-      dayOfWeek,
+      scheduleDate: {
+        gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+        lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1),
+      },
       ...(excludeId && { id: { not: excludeId } }),
     },
     include: { student: true, teacher: true, subject: true },

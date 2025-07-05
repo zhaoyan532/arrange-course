@@ -10,7 +10,7 @@ const scheduleSchema = z.object({
   teacherId: z.string().min(1, '请选择教师'),
   subjectId: z.string().min(1, '请选择科目'),
   classroomId: z.string().min(1, '请选择教室'),
-  dayOfWeek: z.number().int().min(1).max(7, '星期几必须在1-7之间'),
+  scheduleDate: z.string().min(1, '请选择上课日期'),
   startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '开始时间格式不正确'),
   endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '结束时间格式不正确'),
   notes: z.string().optional(),
@@ -41,14 +41,28 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const studentId = searchParams.get('studentId')
     const teacherId = searchParams.get('teacherId')
-    const dayOfWeek = searchParams.get('dayOfWeek')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     const skip = (page - 1) * limit
 
     const where: any = {}
     if (studentId) where.studentId = studentId
     if (teacherId) where.teacherId = teacherId
-    if (dayOfWeek) where.dayOfWeek = parseInt(dayOfWeek)
+    if (startDate && endDate) {
+      where.scheduleDate = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      }
+    } else if (startDate) {
+      where.scheduleDate = {
+        gte: new Date(startDate),
+      }
+    } else if (endDate) {
+      where.scheduleDate = {
+        lte: new Date(endDate),
+      }
+    }
 
     const [schedules, total] = await Promise.all([
       prisma.schedule.findMany({
@@ -62,7 +76,7 @@ export async function GET(request: NextRequest) {
           classroom: true,
         },
         orderBy: [
-          { dayOfWeek: 'asc' },
+          { scheduleDate: 'asc' },
           { startTime: 'asc' },
         ],
       }),
@@ -102,10 +116,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查学生时间冲突
+    const scheduleDate = new Date(validatedData.scheduleDate)
     const studentConflicts = await prisma.schedule.findMany({
       where: {
         studentId: validatedData.studentId,
-        dayOfWeek: validatedData.dayOfWeek,
+        scheduleDate: {
+          gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+          lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1),
+        },
       },
       include: {
         subject: true,
@@ -133,7 +151,10 @@ export async function POST(request: NextRequest) {
     const teacherConflicts = await prisma.schedule.findMany({
       where: {
         teacherId: validatedData.teacherId,
-        dayOfWeek: validatedData.dayOfWeek,
+        scheduleDate: {
+          gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+          lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1),
+        },
       },
       include: {
         student: true,
@@ -161,7 +182,10 @@ export async function POST(request: NextRequest) {
     const classroomConflicts = await prisma.schedule.findMany({
       where: {
         classroomId: validatedData.classroomId,
-        dayOfWeek: validatedData.dayOfWeek,
+        scheduleDate: {
+          gte: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate()),
+          lt: new Date(scheduleDate.getFullYear(), scheduleDate.getMonth(), scheduleDate.getDate() + 1),
+        },
       },
       include: {
         student: true,
@@ -189,7 +213,13 @@ export async function POST(request: NextRequest) {
     // 创建排课
     const schedule = await prisma.schedule.create({
       data: {
-        ...validatedData,
+        studentId: validatedData.studentId,
+        teacherId: validatedData.teacherId,
+        subjectId: validatedData.subjectId,
+        classroomId: validatedData.classroomId,
+        scheduleDate: new Date(validatedData.scheduleDate),
+        startTime: validatedData.startTime,
+        endTime: validatedData.endTime,
         notes: validatedData.notes || null,
       },
       include: {

@@ -51,6 +51,9 @@ export default function TeachersPage() {
   const [totalCount, setTotalCount] = useState(0)
   const pageSize = 10
 
+  // 创建加载状态
+  const [isCreating, setIsCreating] = useState(false)
+
   // 获取教师列表
   const fetchTeachers = async () => {
     try {
@@ -90,15 +93,18 @@ export default function TeachersPage() {
 
   // 创建教师
   const handleCreate = async () => {
+    if (isCreating) return // 防止重复提交
+
     try {
+      setIsCreating(true)
       const response = await fetch('/api/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         toast.success('教师创建成功')
         setIsCreateDialogOpen(false)
@@ -109,6 +115,8 @@ export default function TeachersPage() {
       }
     } catch (error) {
       toast.error('创建教师失败')
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -228,8 +236,12 @@ export default function TeachersPage() {
                   placeholder="请输入主要科目"
                 />
               </div>
-              <Button onClick={handleCreate} className="w-full">
-                创建教师
+              <Button
+                onClick={handleCreate}
+                className="w-full"
+                disabled={isCreating}
+              >
+                {isCreating ? '创建中...' : '创建教师'}
               </Button>
             </div>
           </DialogContent>
