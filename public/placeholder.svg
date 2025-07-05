@@ -1,0 +1,32 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#F8FAFC"/>
+  
+  <!-- Border -->
+  <rect x="1" y="1" width="398" height="298" stroke="#E2E8F0" stroke-width="2" fill="none"/>
+  
+  <!-- Image Icon -->
+  <g transform="translate(175, 120)">
+    <!-- Image frame -->
+    <rect x="0" y="0" width="50" height="40" rx="4" stroke="#94A3B8" stroke-width="2" fill="none"/>
+    
+    <!-- Mountain/landscape -->
+    <path d="M8 28 L18 18 L28 25 L42 12" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    
+    <!-- Sun/circle -->
+    <circle cx="35" cy="12" r="4" stroke="#94A3B8" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="180" text-anchor="middle" fill="#64748B" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500">
+    Product Image
+  </text>
+  
+  <!-- Subtle pattern -->
+  <defs>
+    <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="10" cy="10" r="1" fill="#E2E8F0"/>
+    </pattern>
+  </defs>
+  <rect width="400" height="300" fill="url(#dots)" opacity="0.3"/>
+</svg> 
