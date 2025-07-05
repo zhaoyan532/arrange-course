@@ -334,25 +334,7 @@ export const emailSubscriptionService = {
     return data
   },
 
-  // 获取需要发送提醒的订阅者（超过指定月数的）
-  async getSubscribersForReminder(monthsThreshold: number = 3): Promise<EmailSubscription[]> {
-    const supabaseAdmin = getSupabaseAdmin()
-    const thresholdDate = new Date()
-    thresholdDate.setMonth(thresholdDate.getMonth() - monthsThreshold)
-    
-    const { data, error } = await supabaseAdmin
-      .from('email_subscriptions')
-      .select('*')
-      .eq('is_active', true)
-      .or(`last_sent.is.null,last_sent.lt.${thresholdDate.toISOString()}`)
-    
-    if (error) {
-      console.error('Error getting subscribers for reminder:', error)
-      return []
-    }
-    
-    return data || []
-  }
+
 }
 
 // 更新日志相关
