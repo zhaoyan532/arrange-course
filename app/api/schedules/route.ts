@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { logOperation } from '@/lib/operation-log'
+import { checkScheduleConflicts } from '@/lib/schedule-utils'
 
 // 排课数据验证 schema
 const scheduleSchema = z.object({
@@ -215,74 +217,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 获取冲突检测的辅助函数
-export async function checkScheduleConflicts(
-  studentId: string,
-  teacherId: string,
-  classroomId: string,
-  dayOfWeek: number,
-  startTime: string,
-  endTime: string,
-  excludeId?: string
-) {
-  const conflicts = []
 
-  // 检查学生冲突
-  const studentConflicts = await prisma.schedule.findMany({
-    where: {
-      studentId,
-      dayOfWeek,
-      ...(excludeId && { id: { not: excludeId } }),
-    },
-    include: { subject: true, teacher: true },
-  })
-
-  for (const conflict of studentConflicts) {
-    if (isTimeOverlap(startTime, endTime, conflict.startTime, conflict.endTime)) {
-      conflicts.push({
-        type: 'student',
-        message: `学生时间冲突：${conflict.subject.name}（${conflict.startTime}-${conflict.endTime}）`,
-      })
-    }
-  }
-
-  // 检查教师冲突
-  const teacherConflicts = await prisma.schedule.findMany({
-    where: {
-      teacherId,
-      dayOfWeek,
-      ...(excludeId && { id: { not: excludeId } }),
-    },
-    include: { student: true, subject: true },
-  })
-
-  for (const conflict of teacherConflicts) {
-    if (isTimeOverlap(startTime, endTime, conflict.startTime, conflict.endTime)) {
-      conflicts.push({
-        type: 'teacher',
-        message: `教师时间冲突：${conflict.subject.name}（${conflict.startTime}-${conflict.endTime}）`,
-      })
-    }
-  }
-
-  // 检查教室冲突
-  const classroomConflicts = await prisma.schedule.findMany({
-    where: {
-      classroomId,
-      dayOfWeek,
-      ...(excludeId && { id: { not: excludeId } }),
-    },
-    include: { student: true, teacher: true, subject: true },
-  })
-
-  for (const conflict of classroomConflicts) {
-    if (isTimeOverlap(startTime, endTime, conflict.startTime, conflict.endTime)) {
-      conflicts.push({
-        type: 'classroom',
-        message: `教室使用冲突：${conflict.subject.name}（${conflict.startTime}-${conflict.endTime}）`,
-      })
-    }
-  }
-
-  return conflicts
-}

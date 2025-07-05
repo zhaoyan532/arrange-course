@@ -36,5 +36,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Export reset code store for the reset-password endpoint
-export { resetCodeStore } 

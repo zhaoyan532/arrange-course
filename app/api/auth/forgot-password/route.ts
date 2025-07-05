@@ -110,5 +110,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Export the reset code store for other endpoints
-export { resetCodeStore } 
