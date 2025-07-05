@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 处理密码，如果没有提供则使用默认密码
-    const password = validatedData.password || '123456'
+    const password = validatedData.password || 'Xx@123456'
     const hashedPassword = await hashPassword(password)
 
     // 处理空字符串
